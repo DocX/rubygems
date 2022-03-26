@@ -162,8 +162,9 @@ module Bundler
 
         path = fetch_gem(spec, options[:previous_spec])
         if path
+          package = Bundler.rubygems.gem_from_path(path, Bundler.settings["trust-policy"])
           begin
-            s = Bundler.rubygems.spec_from_gem(path, Bundler.settings["trust-policy"])
+            s = package.spec
           rescue Gem::Package::FormatError
             Bundler.rm_rf(path)
             raise
@@ -179,6 +180,7 @@ module Bundler
               raise
             end
           end
+
           spec.__swap__(s)
         end
 
@@ -188,6 +190,8 @@ module Bundler
           Bundler.ui.confirm message
 
           path = cached_gem(spec)
+          package = Bundler.rubygems.gem_from_path(path)
+
           raise GemNotFound, "Could not find #{spec.file_name} for installation" unless path
           if requires_sudo?
             install_path = Bundler.tmp(spec.full_name)
@@ -201,8 +205,8 @@ module Bundler
 
           require_relative "../rubygems_gem_installer"
 
-          installed_spec = Bundler::RubyGemsGemInstaller.at(
-            path,
+          installed_spec = Bundler::RubyGemsGemInstaller.new(
+            package,
             :install_dir         => install_path.to_s,
             :bin_dir             => bin_path.to_s,
             :ignore_dependencies => true,
