@@ -1271,10 +1271,20 @@ class Gem::Specification < Gem::BasicSpecification
     array = begin
       Marshal.load str
     rescue ArgumentError => e
-      raise unless e.message.include?("YAML")
+      message = e.message
+      raise unless message.include?("YAML::")
 
-      Object.const_set "YAML", Psych
-      Marshal.load str
+      Object.const_set "YAML", Psych unless Object.const_defined?(:YAML)
+
+      if message.include?("YAML::Syck::")
+        YAML.const_set "Syck", YAML unless YAML.const_defined?(:Syck)
+
+        YAML::Syck.const_set "DefaultKey", Class.new if message.include?("YAML::Syck::DefaultKey")
+      elsif message.include?("YAML::PrivateType")
+        YAML.const_set "PrivateType", Class.new
+      end
+
+      retry
     end
 
     spec = Gem::Specification.new
